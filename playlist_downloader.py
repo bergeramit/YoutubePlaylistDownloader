@@ -107,8 +107,8 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Download every video from the wanted playlist in the best quality store them in the destination folder')
-    parser.add_argument('-p', '--playlist_url', dest='playlist_url', help='the playlist\'s url')
-    parser.add_argument('-d', '--destination_folder', dest='destination_folder', help='the videos will be saved in this folder')
-    parser.add_argument('-f', '--start_index', dest='start_index', help='from video at index')
-    parser.add_argument('-t', '--end_index', dest='end_index', help='to video at index')
+    parser.add_argument('-p', '--playlist_url', required=True, dest='playlist_url', help='the playlist\'s url')
+    parser.add_argument('-d', '--destination_folder', required=True, dest='destination_folder', help='the videos will be saved in this folder')
+    parser.add_argument('-f', '--start_index', type=int, dest='start_index', help='from video at index')
+    parser.add_argument('-t', '--end_index', type=int, dest='end_index', help='to video at index')
     main()
