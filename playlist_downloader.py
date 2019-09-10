@@ -10,19 +10,13 @@ from bs4 import BeautifulSoup
 
 VIDEO_LINK_CLASS = "yt-simple-endpoint style-scope ytd-playlist-video-renderer"
 VIDEO_TAG = "ytd-playlist-video-renderer"
-VIDEO_TITLE_CLASS = "watch-title"
+VIDEO_TITLE_ID = "video-title"
 
 
 class YoutubeVideo:
-	def __init__(self, url):
+	def __init__(self, url, title):
 		self.url = url
-		self.title = self.get_title()
-
-	def get_title(self):
-		with contextlib.closing(urllib.request.urlopen(self.url)) as url:
-			handler = BeautifulSoup(url, 'html.parser')
-			title = handler.find(attrs={'class': VIDEO_TITLE_CLASS})
-			return title.contents[0].strip()
+		self.title = title
 
 
 class YoutubePlaylist:
@@ -36,13 +30,15 @@ class YoutubePlaylist:
 	def get_videos_in_playlist(self):
 		try:
 			playlist_video_struct = self.handler.findAll(VIDEO_TAG)
-			suffix_urls = [video.find("a", attrs={'class': VIDEO_LINK_CLASS}).attrs['href'] for video in playlist_video_struct]
+			html_video_objects = [video.find("a", attrs={'class': VIDEO_LINK_CLASS}) for video in playlist_video_struct]
+
 		except:
 			print("Can't open playlist URL. Please check the URL again")
-
-		full_urls = ["".join(["https://www.youtube.com", url]) for url in suffix_urls]
-		for url in full_urls:
-			self.videos_in_playlist.append(YoutubeVideo(url))
+		
+		for html_video_object in html_video_objects:
+			full_url = "".join(["https://www.youtube.com", html_video_object.attrs['href']])
+			video_title = html_video_object.find("span", attrs={'id': VIDEO_TITLE_ID}).contents[0].strip()
+			self.videos_in_playlist.append(YoutubeVideo(full_url, video_title))
 
 
 def get_js_rendered_html_handler(url):
