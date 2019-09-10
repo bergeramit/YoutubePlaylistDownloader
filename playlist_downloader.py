@@ -1,8 +1,8 @@
 import urllib.request
 import argparse
+import contextlib
 import os
 import sys
-import math
 
 from requests_html import HTMLSession
 from pytube import YouTube
@@ -13,25 +13,56 @@ VIDEO_TAG = "ytd-playlist-video-renderer"
 VIDEO_TITLE_CLASS = "watch-title"
 
 
+class YoutubeVideo:
+	def __init__(self, url):
+		self.url = url
+		self.title = self.get_title()
+
+	def get_title(self):
+		with contextlib.closing(urllib.request.urlopen(self.url)) as url:
+			handler = BeautifulSoup(url, 'html.parser')
+			title = handler.find(attrs={'class': VIDEO_TITLE_CLASS})
+			return title.contents[0].strip()
+
+
+class YoutubePlaylist:
+	def __init__(self, url):
+		self.url = url
+		self.handler = get_js_rendered_html_handler(url)
+		self.title = self.handler.title.contents[0]
+		self.videos_in_playlist = []
+		self.get_videos_in_playlist()
+
+	def get_videos_in_playlist(self):
+		try:
+			playlist_video_struct = self.handler.findAll(VIDEO_TAG)
+			suffix_urls = [video.find("a", attrs={'class': VIDEO_LINK_CLASS}).attrs['href'] for video in playlist_video_struct]
+		except:
+			print("Can't open playlist URL. Please check the URL again")
+
+		full_urls = ["".join(["https://www.youtube.com", url]) for url in suffix_urls]
+		for url in full_urls:
+			self.videos_in_playlist.append(YoutubeVideo(url))
+
+
 def get_js_rendered_html_handler(url):
-	session = HTMLSession()
-	raw_html = session.get(url)
-	raw_html.html.render()
-	return BeautifulSoup(raw_html.html.html, 'html.parser')
-
-
-def get_video_urls_from_playlist(playlist_url):
-	try:
-		handler = get_js_rendered_html_handler(playlist_url)
-		print("-- {} --".format(handler.title.contents[0]))
-		playlist_video_struct = handler.findAll(VIDEO_TAG)
-		return [vid.find("a", attrs={'class': VIDEO_LINK_CLASS}).attrs['href'] for vid in playlist_video_struct]
-
-	except:
-		print("Can't open playlist URL. Please check the URL again")
+		'''
+		get the rendered html version of the site -
+		includes the moidifications JS makes dynamicaly
+		'''
+		try:
+			session = HTMLSession()
+			raw_html = session.get(url)
+			raw_html.html.render()
+			return BeautifulSoup(raw_html.html.html, 'html.parser')
+		except:
+			print("Can't open playlist URL. Please check the URL again")
 
 
 def generate_local_video_downloader(destination_folder):
+	'''
+	retrieves a downloader that saves files localy to a destination folder
+	'''
 	def download_video(video_url):
 		try:
 			YouTube(video_url).streams.first().download(destination_folder)
@@ -50,32 +81,25 @@ def print_progress(current_downloaded, index, total_length):
 	sys.stdout.write("Completed: {}% ({} out of {})".format(precent_done, index + 1, total_length))
 
 
-def retrieve_title(complete_url):
-	handler = BeautifulSoup(urllib.request.urlopen(complete_url), 'html.parser')
-	title = handler.find(attrs={'class': VIDEO_TITLE_CLASS})
-	return title.contents[0].strip()
+def download_videos(videos, downloader):
+	for i in range(len(videos)):
+		downloader(videos[i].url)
+		print_progress(videos[i].title, i, len(videos))
 
 
 def download_playlist(playlist_url, destination_folder, start_index, end_index):
 	video_downloader = generate_local_video_downloader(destination_folder)
-	urls = get_video_urls_from_playlist(playlist_url)
+	playlist = YoutubePlaylist(playlist_url)
+	print("-- {} --".format(playlist.title))
 	print("-- Begin Downloading playlist --")
-
-	if end_index is not None:
-		urls = urls[:end_index]
-	if start_index is not None:
-		urls = urls[start_index:]
-
-	for i in range(len(urls)):
-		complete_url = "".join(["https://www.youtube.com", urls[i]])
-		video_downloader(complete_url)
-		print_progress(retrieve_title(complete_url), i, len(urls))
+	desired_videos_in_playlist = playlist.videos_in_playlist[slice(start_index, end_index, 1)]
+	download_videos(desired_videos_in_playlist, video_downloader)
 
 
 def main():
     args = parser.parse_args()
     try:
-    	os.system("mkdir {}".format(args.destination_folder))
+    	os.mkdir(args.destination_folder)
     except:
     	pass
 
