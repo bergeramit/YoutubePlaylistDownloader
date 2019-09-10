@@ -1,6 +1,5 @@
 import urllib.request
 import argparse
-import contextlib
 import os
 import sys
 
@@ -25,9 +24,9 @@ class YoutubePlaylist:
 		self.handler = get_js_rendered_html_handler(url)
 		self.title = self.handler.title.contents[0]
 		self.videos_in_playlist = []
-		self.get_videos_in_playlist()
+		self.extract_videos_from_playlist()
 
-	def get_videos_in_playlist(self):
+	def extract_videos_from_playlist(self):
 		try:
 			playlist_video_struct = self.handler.findAll(VIDEO_TAG)
 			html_video_objects = [video.find("a", attrs={'class': VIDEO_LINK_CLASS}) for video in playlist_video_struct]
