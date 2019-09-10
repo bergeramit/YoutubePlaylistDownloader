@@ -15,7 +15,7 @@ def get_video_urls_from_playlist(playlist_url):
 		raw_html = session.get(playlist_url)
 		raw_html.html.render()
 		handler = BeautifulSoup(raw_html.html.html, 'html.parser')
-		print("-- {} --".format(self.handler.title.contents[0]))
+		print("-- {} --".format(handler.title.contents[0]))
 		playlist_video_struct = handler.findAll(VIDEO_TAG)
 		return [vid.find("a", attrs={'class': VIDEO_LINK_CLASS}).attrs['href'] for vid in playlist_video_struct]
 
@@ -28,7 +28,7 @@ def generate_local_video_downloader(destination_folder):
 		try:
 			YouTube(video_url).streams.first().download(destination_folder)
 			print("-- Downloaded URL: {} --".format(video_url))
-		except::
+		except:
 			print("Can't get a Youtube Handler")
 
 	return download_video
