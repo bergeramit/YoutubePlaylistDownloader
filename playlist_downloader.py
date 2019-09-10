@@ -1,5 +1,8 @@
 import urllib.request
 import argparse
+import os
+import sys
+import math
 
 from requests_html import HTMLSession
 from pytube import YouTube
@@ -27,7 +30,6 @@ def generate_local_video_downloader(destination_folder):
 	def download_video(video_url):
 		try:
 			YouTube(video_url).streams.first().download(destination_folder)
-			print("-- Downloaded URL: {} --".format(video_url))
 		except:
 			print("Can't get a Youtube Handler")
 
@@ -44,12 +46,21 @@ def download_playlist(playlist_url, destination_folder, start_index, end_index):
 	if start_index is not None:
 		urls = urls[start_index:]
 
-	for video_url in urls:
-		video_downloader("".join(["https://www.youtube.com", video_url]))
+	for i in range(len(urls)):
+		video_downloader("".join(["https://www.youtube.com", urls[i]]))
+		sys.stdout.write("\r")
+		precent_done = 100 * float(i + 1) / len(urls)
+		sys.stdout.flush()
+		sys.stdout.write("Completed: {}% ({} out of {})".format(precent_done, i + 1, len(urls)))
 
 
 def main():
     args = parser.parse_args()
+    try:
+    	os.system("mkdir {}".format(args.destination_folder))
+    except:
+    	pass
+
     download_playlist(args.playlist_url,
     				  args.destination_folder,
     				  args.start_index,
@@ -60,6 +71,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Download every video from the wanted playlist in the best quality store them in the destination folder')
     parser.add_argument('-p', '--playlist_url', dest='playlist_url', help='the playlist\'s url')
     parser.add_argument('-d', '--destination_folder', dest='destination_folder', help='the videos will be saved in this folder')
-    parser.add_argument('-f', '--start_index', dest='start_index', help='the playlist\'s url')
-    parser.add_argument('-t', '--end_index', dest='end_index', help='the playlist\'s url')
+    parser.add_argument('-f', '--start_index', dest='start_index', help='from video at index')
+    parser.add_argument('-t', '--end_index', dest='end_index', help='to video at index')
     main()
