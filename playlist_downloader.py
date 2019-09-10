@@ -41,17 +41,17 @@ class YoutubePlaylist:
 
 
 def get_js_rendered_html_handler(url):
-		'''
-		get the rendered html version of the site -
-		includes the moidifications JS makes dynamicaly
-		'''
-		try:
-			session = HTMLSession()
-			raw_html = session.get(url)
-			raw_html.html.render()
-			return BeautifulSoup(raw_html.html.html, 'html.parser')
-		except:
-			print("Can't open playlist URL. Please check the URL again")
+	'''
+	get the rendered html version of the site -
+	includes the moidifications JS makes dynamicaly
+	'''
+	try:
+		session = HTMLSession()
+		raw_html = session.get(url)
+		raw_html.html.render()
+		return BeautifulSoup(raw_html.html.html, 'html.parser')
+	except:
+		print("Can't open playlist URL. Please check the URL again")
 
 
 def generate_local_video_downloader(destination_folder):
