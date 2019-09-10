@@ -10,14 +10,19 @@ from bs4 import BeautifulSoup
 
 VIDEO_LINK_CLASS = "yt-simple-endpoint style-scope ytd-playlist-video-renderer"
 VIDEO_TAG = "ytd-playlist-video-renderer"
+VIDEO_TITLE_CLASS = "watch-title"
+
+
+def get_js_rendered_html_handler(url):
+	session = HTMLSession()
+	raw_html = session.get(url)
+	raw_html.html.render()
+	return BeautifulSoup(raw_html.html.html, 'html.parser')
 
 
 def get_video_urls_from_playlist(playlist_url):
 	try:
-		session = HTMLSession()
-		raw_html = session.get(playlist_url)
-		raw_html.html.render()
-		handler = BeautifulSoup(raw_html.html.html, 'html.parser')
+		handler = get_js_rendered_html_handler(playlist_url)
 		print("-- {} --".format(handler.title.contents[0]))
 		playlist_video_struct = handler.findAll(VIDEO_TAG)
 		return [vid.find("a", attrs={'class': VIDEO_LINK_CLASS}).attrs['href'] for vid in playlist_video_struct]
@@ -36,6 +41,21 @@ def generate_local_video_downloader(destination_folder):
 	return download_video
 
 
+def print_progress(current_downloaded, index, total_length):
+	sys.stdout.flush()
+	sys.stdout.write("\r")
+	print("Downloaded: {}".format(current_downloaded))
+	precent_done = 100 * float(index + 1) / total_length
+	sys.stdout.flush()
+	sys.stdout.write("Completed: {}% ({} out of {})".format(precent_done, index + 1, total_length))
+
+
+def retrieve_title(complete_url):
+	handler = BeautifulSoup(urllib.request.urlopen(complete_url), 'html.parser')
+	title = handler.find(attrs={'class': VIDEO_TITLE_CLASS})
+	return title.contents[0].strip()
+
+
 def download_playlist(playlist_url, destination_folder, start_index, end_index):
 	video_downloader = generate_local_video_downloader(destination_folder)
 	urls = get_video_urls_from_playlist(playlist_url)
@@ -47,11 +67,9 @@ def download_playlist(playlist_url, destination_folder, start_index, end_index):
 		urls = urls[start_index:]
 
 	for i in range(len(urls)):
-		video_downloader("".join(["https://www.youtube.com", urls[i]]))
-		sys.stdout.write("\r")
-		precent_done = 100 * float(i + 1) / len(urls)
-		sys.stdout.flush()
-		sys.stdout.write("Completed: {}% ({} out of {})".format(precent_done, i + 1, len(urls)))
+		complete_url = "".join(["https://www.youtube.com", urls[i]])
+		video_downloader(complete_url)
+		print_progress(retrieve_title(complete_url), i, len(urls))
 
 
 def main():
