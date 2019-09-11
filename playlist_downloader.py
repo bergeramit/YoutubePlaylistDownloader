@@ -57,10 +57,19 @@ class YoutubePlaylist:
 
 
     def download_playlist(self, destination_folder, start_index=None, end_index=None):
-        video_downloader = self.generate_local_video_downloader(destination_folder)
+        self.video_downloader = self.generate_local_video_downloader(destination_folder)
         print("-- {} --".format(self.title))
         print("-- Begin Downloading playlist --")
-        download_videos(self.videos_in_playlist[slice(start_index, end_index, 1)], video_downloader)
+        self.download_videos(self.videos_in_playlist[slice(start_index, end_index, 1)])
+
+
+    def download_videos(self, videos):
+        for i, video in enumerate(videos):
+            self.video_downloader(video['url'])
+            sys.stdout.flush()
+            sys.stdout.write("\r")
+            print("Downloaded => {}".format(video['title']))
+            print_progress(i, len(videos))
 
 
 def get_js_rendered_html_handler(url):
@@ -77,29 +86,19 @@ def get_js_rendered_html_handler(url):
         print("Can't open playlist URL. Please check the URL again")
 
 
-def print_progress(current_downloaded, index, total_length):
+def print_progress(current_value, total_value):
     '''
     print the progress of the task
     '''
+    precent_done = 100 * float(current_value + 1) / total_value
     sys.stdout.flush()
-    sys.stdout.write("\r")
-    print("Downloaded: {}".format(current_downloaded))
-    precent_done = 100 * float(index + 1) / total_length
-    sys.stdout.flush()
-    sys.stdout.write("Completed: {}% ({} out of {})".format(precent_done, index + 1, total_length))
-
-
-def download_videos(videos, downloader):
-    for i, video in enumerate(videos):
-        downloader(video['url'])
-        print_progress(video['title'], i, len(videos))
-
-
-
+    sys.stdout.write("Completed: {}% ({} out of {})".format(precent_done,
+                                                            current_value + 1,
+                                                            total_value))
 
 
 def main():
-    args = parser.parse_args()
+    args = PARSER.parse_args()
     try:
         os.mkdir(args.destination_folder)
     except:
@@ -112,9 +111,26 @@ def main():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Download every video from the wanted playlist in the best quality store them in the destination folder')
-    parser.add_argument('-p', '--playlist_url', required=True, dest='playlist_url', help='the playlist\'s url')
-    parser.add_argument('-d', '--destination_folder', required=True, dest='destination_folder', help='the videos will be saved in this folder')
-    parser.add_argument('-f', '--start_index', type=int, dest='start_index', help='from video at index')
-    parser.add_argument('-t', '--end_index', type=int, dest='end_index', help='to video at index')
+    PARSER = argparse.ArgumentParser(description='Download every video from the wanted playlist \
+                                     in the best quality store them in the destination folder')
+    PARSER.add_argument('-p',
+                        '--playlist_url',
+                        required=True,
+                        dest='playlist_url',
+                        help='the playlist\'s url')
+    PARSER.add_argument('-d',
+                        '--destination_folder',
+                        required=True,
+                        dest='destination_folder',
+                        help='the videos will be saved in this folder')
+    PARSER.add_argument('-f',
+                        '--start_index',
+                        type=int,
+                        dest='start_index',
+                        help='from video at index')
+    PARSER.add_argument('-t',
+                        '--end_index',
+                        type=int,
+                        dest='end_index',
+                        help='to video at index')
     main()
