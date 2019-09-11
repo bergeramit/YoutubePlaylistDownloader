@@ -5,7 +5,6 @@ import errno
 import argparse
 import os
 import sys
-import urllib3
 
 from urllib.parse import urljoin
 import requests_html
