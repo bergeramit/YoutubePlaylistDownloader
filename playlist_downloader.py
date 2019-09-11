@@ -17,32 +17,23 @@ VIDEO_TAG = "ytd-playlist-video-renderer"
 VIDEO_TITLE_ID = "video-title"
 
 
-def generate_local_video_downloader(destination_folder):
-    '''
-    retrieves a downloader that saves files locally to a destination folder
-    '''
-    def download_video(video_url):
-        try:
-            pytube.YouTube(video_url).streams.first().download(destination_folder)
-        except pytube.exceptions.PytubeError as error:
-            print("Pytube library error: {}".format(error))
-            print("Can't get a Youtube Handler")
-
-    return download_video
-
-
-def download_videos(videos, local_downloader):
+def download_videos(videos, destination_folder):
     '''
     download youtube videos from urls
     :param videos - dict of url and title
-    :param local_downloader - function that downloads the vids locally
+    :param destination_folder - folder to store the downloed videos
     '''
-    for i, video in enumerate(videos):
-        local_downloader(video['url'])
-        sys.stdout.flush()
-        sys.stdout.write("\r")
-        print("Downloaded => {}".format(video['title']))
-        print_progress(i, len(videos))
+    try:
+        for i, video in enumerate(videos):
+            pytube.YouTube(video['url']).streams.first().download(destination_folder)
+            sys.stdout.flush()
+            sys.stdout.write("\r")
+            print("Downloaded => {}".format(video['title']))
+            print_progress(i, len(videos))
+
+    except pytube.exceptions.PytubeError as error:
+        print("Pytube library error: {}".format(error))
+        print("Can't download the video")
 
 
 class YoutubePlaylist:
@@ -51,36 +42,41 @@ class YoutubePlaylist:
     '''
     def __init__(self, url):
         self.url = url
-        self.handler = get_js_rendered_html_handler(url)
+        self.handler = get_rendered_html_handler(url)
         self.title = self.handler.title.contents[0]
-        self.videos_in_playlist = []
 
 
-    def extract_videos_from_playlist(self):
+    def get_videos_in_playlist(self):
         '''
-        get all of the video's url and title
+        get all of the video's urls and titles from the playlist
         '''
         try:
+            videos_in_playlist = []
             playlist_video_struct = self.handler.findAll(VIDEO_TAG)
             html_video_objects = [video.find("a", attrs={'class': VIDEO_LINK_CLASS}) for video in playlist_video_struct]
 
-            for html_video_object in html_video_objects:
-                full_url = urljoin("https://www.youtube.com", html_video_object.attrs['href'])
-                video_title = html_video_object.find("span", attrs={'id': VIDEO_TITLE_ID}).contents[0].strip()
-                self.videos_in_playlist.append({'title': video_title, 'url': full_url})
+            for video_object in html_video_objects:
+                full_url = urljoin("https://www.youtube.com", video_object.attrs['href'])
+                video_title = video_object.find("span", attrs={'id': VIDEO_TITLE_ID}).contents[0].strip()
+                videos_in_playlist.append({'title': video_title, 'url': full_url})
+
+            return videos_in_playlist
+
         except AttributeError:
             raise ValueError("Could not fetch the videos in playlist. Check the playlist link again")
 
 
-    def download_playlist(self, destination_folder, start_index=None, end_index=None):
-        local_downloader = generate_local_video_downloader(destination_folder)
-        self.extract_videos_from_playlist()
+    def download(self, destination_folder, start_index=None, end_index=None):
+        '''
+        Download a full youtube playlist
+        '''
+        videos_in_playlist = self.get_videos_in_playlist()
         print("-- {} --".format(self.title))
-        print("-- Begin Downloading playlist --")
-        download_videos(self.videos_in_playlist[slice(start_index, end_index, 1)], local_downloader)
+        print("Begin Downloading playlist")
+        download_videos(videos_in_playlist[slice(start_index, end_index, 1)], destination_folder)
 
 
-def get_js_rendered_html_handler(url):
+def get_rendered_html_handler(url):
     '''
     get the rendered html version of the site -
     includes the modifications JS makes dynamically
@@ -90,6 +86,7 @@ def get_js_rendered_html_handler(url):
         raw_html = session.get(url)
         raw_html.html.render()
         return BeautifulSoup(raw_html.html.html, 'html.parser')
+
     except requests.exceptions.ConnectionError:
         raise ValueError("Can't open playlist URL. Please check the URL again")
 
@@ -109,14 +106,15 @@ def main():
     args = PARSER.parse_args()
     try:
         os.mkdir(args.destination_folder)
+
     except OSError as error:
         if error.errno != errno.EEXIST:
             raise
 
     playlist = YoutubePlaylist(args.playlist_url)
-    playlist.download_playlist(args.destination_folder,
-                               args.start_index,
-                               args.end_index)
+    playlist.download(args.destination_folder,
+                      args.start_index,
+                      args.end_index)
 
 
 if __name__ == "__main__":
