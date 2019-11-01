@@ -16,25 +16,6 @@ VIDEO_TAG = "ytd-playlist-video-renderer"
 VIDEO_TITLE_ID = "video-title"
 
 
-def _download_videos(videos, destination_folder):
-    '''
-    download youtube videos from urls
-    :param videos - dict of url and title
-    :param destination_folder - folder to store the downloed videos
-    '''
-    try:
-        for i, video in enumerate(videos):
-            pytube.YouTube(video['url']).streams.first().download(destination_folder)
-            sys.stdout.flush()
-            sys.stdout.write("\r")
-            print("Downloaded => {}".format(video['title']))
-            _print_progress(i, len(videos))
-
-    except pytube.exceptions.PytubeError as error:
-        print("Pytube library error: {}".format(error))
-        print("Can't download the video")
-
-
 def _extract_video_title(video):
     '''
     extract the title from the html object
@@ -86,30 +67,42 @@ class YoutubePlaylist:
         return [video.find("a", attrs={'class': VIDEO_LINK_CLASS}) for video in playlist_video_struct]
 
 
-    def get_videos_in_playlist(self):
+    def get_videos_in_playlist(self, start_index, end_index):
         '''
         get all of the video's urls and titles from the playlist
         '''
+
+        videos = []
         try:
-            videos_in_playlist = []
             html_video_structs = self._extract_html_video_structs()
 
-            for video in html_video_structs:
-                full_url = urljoin("https://www.youtube.com", video.attrs['href'])
-                video_title = _extract_video_title(video)
-                videos_in_playlist.append({'title': video_title, 'url': full_url})
-
-            return videos_in_playlist
-
         except AttributeError:
-            raise ValueError("Could not fetch the videos in playlist. Check the playlist link again")
+            raise ValueError("Could not fetch the videos in playlist. Check the link again")
+
+        for video in html_video_structs:
+            full_url = urljoin("https://www.youtube.com", video.attrs['href'])
+            title = _extract_video_title(video)
+            videos.append({'title': title, 'url': full_url})
+
+        return videos[slice(start_index, end_index, 1)]
 
 
     def download(self, destination_folder, start_index=None, end_index=None):
         '''
         Download a full youtube playlist
         '''
-        videos_in_playlist = self.get_videos_in_playlist()
+        videos = self.get_videos_in_playlist(start_index, end_index)
         print("-- {} --".format(self.title))
         print("Begin Downloading playlist")
-        _download_videos(videos_in_playlist[slice(start_index, end_index, 1)], destination_folder)
+
+        try:
+            for i, video in enumerate(videos):
+                pytube.YouTube(video['url']).streams.first().download(destination_folder)
+                sys.stdout.flush()
+                sys.stdout.write("\r")
+                print("Downloaded => {}".format(video['title']))
+                _print_progress(i, len(videos))
+
+        except pytube.exceptions.PytubeError as error:
+            print("Pytube library error: {}".format(error))
+            print("Can't download the video")
