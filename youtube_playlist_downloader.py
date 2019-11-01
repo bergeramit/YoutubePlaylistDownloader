@@ -38,15 +38,15 @@ def _get_rendered_html_handler(url):
         raise ValueError("Can't open playlist URL. Please check the URL again")
 
 
-def _print_progress(current_value, total_value):
-    '''
-    print the progress of the task
-    '''
-    precent_done = 100 * float(current_value + 1) / total_value
+def _pretty_print_downloaded_videos(title, current_index, number_of_videos):
+    sys.stdout.flush()
+    sys.stdout.write("\r")
+    print("Downloaded => {}".format(title))
+    precent_done = 100 * float(current_index + 1) / number_of_videos
     sys.stdout.flush()
     sys.stdout.write("Completed: {}% ({} out of {})".format(precent_done,
-                                                            current_value + 1,
-                                                            total_value))
+                                                            current_index + 1,
+                                                            number_of_videos))
 
 
 class YoutubePlaylist:
@@ -98,10 +98,7 @@ class YoutubePlaylist:
         try:
             for i, video in enumerate(videos):
                 pytube.YouTube(video['url']).streams.first().download(destination_folder)
-                sys.stdout.flush()
-                sys.stdout.write("\r")
-                print("Downloaded => {}".format(video['title']))
-                _print_progress(i, len(videos))
+                _pretty_print_downloaded_videos(video['title'], i, len(videos))
 
         except pytube.exceptions.PytubeError as error:
             print("Pytube library error: {}".format(error))
